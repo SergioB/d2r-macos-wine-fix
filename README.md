@@ -37,7 +37,9 @@ are in [docs/upstream](docs/upstream).
   Battle.net logged in + D2R downloaded inside it. Its engine archive and support libraries are reused.
 - `python3`, `curl`, `codesign`, `lipo` (Xcode command line tools)
 - The patched `wined3d.dll`: download it from this repository's Releases, or build it with
-  `scripts/build-wined3d.sh` (~30 min; needs `brew install bison mingw-w64 pkgconf freetype gnutls`).
+  `scripts/build-wined3d.sh` (~2 min on an M3; needs `brew install bison mingw-w64 pkgconf freetype gnutls`).
+  The build is reproducible: code and data sections match the released binary byte for byte (only the
+  PE timestamp/checksum differ).
 
 ## Install
 
