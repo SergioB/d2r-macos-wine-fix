@@ -44,7 +44,7 @@ are in [docs/upstream](docs/upstream).
 ## Install
 
 ```sh
-git clone https://github.com/<you>/d2r-macos-wine-fix && cd d2r-macos-wine-fix
+git clone https://github.com/SergioB/d2r-macos-wine-fix && cd d2r-macos-wine-fix
 # quit Battle.net / D2R first
 scripts/build-app.sh \
     --wrapper "/path/to/Diablo 2 Resurrected.app" \
