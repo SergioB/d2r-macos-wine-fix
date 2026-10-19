@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Binary-patch a prebuilt Wine 11.0 x86_64 ntdll.so (macOS) with the check_invalid_gsbase fix.
 
+Only needed for engines based on Wine 11.0-11.3: upstream Wine fixed this in wine-11.4 (commit 6f6f66ee,
+"ntdll: Don't fix gsbase on execution fault exception"), which skips the check for execute faults.
+
 On macOS, Wine cannot read the faulting thread's %gs base, so check_invalid_gsbase() inspects the
 instruction bytes at the faulting RIP. When an instruction straddles into an inaccessible page,
 only its first byte(s) can be read; if those are prefix bytes (e.g. REX 0x48), the prefix loop runs

@@ -75,7 +75,7 @@ echo "unpacking engine"
 mv "$WORK/wswine.bundle" "$RES/wine"
 E="$RES/wine/lib/wine"
 
-echo "patching ntdll.so (check_invalid_gsbase)"
+echo "patching ntdll.so (check_invalid_gsbase; fixed upstream in wine-11.4, still needed for this 11.0 engine)"
 python3 "$REPO/scripts/patch-ntdll.py" "$E/x86_64-unix/ntdll.so"
 codesign --force -s - "$E/x86_64-unix/ntdll.so" 2>/dev/null
 

@@ -48,6 +48,12 @@ The game's protection never receives the access violation it uses to decrypt the
 Returning FALSE unless a `%gs` prefix was actually seen (patch 0001) brings startup from "never" to ~2 s
 (2174 shaders in 30 s).
 
+Upstream Wine had already fixed this independently in wine-11.4: commit
+[6f6f66ee](https://gitlab.winehq.org/wine/wine/-/commit/6f6f66ee) (Piotr Caban, 2026-02-25, "ntdll: Don't
+fix gsbase on execution fault exception") makes `check_invalid_gsbase()` return FALSE for execute faults,
+which is exactly D2R's case (`err 8`). Patch 0001 is only needed for engines based on Wine 11.0–11.3, such
+as Porting Kit's `WS12Wine11.0_1_DXMT-v0.80`.
+
 ## 3. Black ground
 
 Colour-coding experiments (replacing pixel shader outputs with constant colours per shader group)

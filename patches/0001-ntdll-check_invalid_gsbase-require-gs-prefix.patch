@@ -1,3 +1,8 @@
+ntdll: check_invalid_gsbase: only treat a fault as a %gs fault if a %gs prefix was decoded.
+
+For Wine 11.0-11.3. Fixed upstream differently in wine-11.4 by commit 6f6f66ee
+("ntdll: Don't fix gsbase on execution fault exception"), which covers Diablo II: Resurrected.
+
 --- a/dlls/ntdll/unix/signal_x86_64.c
 +++ b/dlls/ntdll/unix/signal_x86_64.c
 @@ -2304,6 +2304,7 @@

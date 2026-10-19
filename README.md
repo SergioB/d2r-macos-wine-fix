@@ -16,7 +16,7 @@ found and fixed one after another:
 | # | Symptom | Root cause | Fix |
 |---|---|---|---|
 | 1 | `Failed to initialize graphics device` (`D3D12CreateDevice Failed`, `0x80004002`) | The engine's DXMT `dxgi.dll` doesn't provide the adapter interface Wine's D3D12 (vkd3d) needs (`d3d12_get_adapter Invalid adapter`) | Use Wine 11.0's stock `dxgi.dll` |
-| 2 | Black window forever at startup (main thread spinning in signal handling) | **Wine bug** in `check_invalid_gsbase()` (macOS only): an access violation on an instruction that straddles into an inaccessible page is mistaken for a `%gs` fault and silently retried forever. D2R's protection decrypts code pages on demand through such faults (~40,000 retries/s) | `patches/0001`, or `scripts/patch-ntdll.py` for the prebuilt engine |
+| 2 | Black window forever at startup (main thread spinning in signal handling) | **Wine bug** in `check_invalid_gsbase()` (macOS only): an access violation on an instruction that straddles into an inaccessible page is mistaken for a `%gs` fault and silently retried forever. D2R's protection decrypts code pages on demand through such faults (~40,000 retries/s). **Already fixed upstream in Wine 11.4** ([6f6f66ee](https://gitlab.winehq.org/wine/wine/-/commit/6f6f66ee), "ntdll: Don't fix gsbase on execution fault exception") | Only needed for Wine 11.0–11.3 based engines such as Porting Kit's: `scripts/patch-ntdll.py` for the prebuilt engine, or `patches/0001` |
 | 3 | Black ground in the game world | D2R draws terrain through a *pass-through* hull/domain shader pair (tessellation factor 1). MoltenVK's tessellation emulation draws nothing for it | `patches/0002`: vkd3d draws those 3-point patches as plain triangles |
 | 4 | Random startup hang (~50%), worse in windowed mode | vkd3d's `device_worker` thread ends up still owning MoltenVK's residency-set lock (`@synchronized(_residencySet)` in `makeResident()`); the game's main thread then blocks forever in `vkUpdateDescriptorSets` | `VKD3D_CONFIG=virtual_heaps` (no `device_worker` thread) |
 
@@ -26,6 +26,10 @@ along the way). The MoltenVK settings from
 buffers, concurrent compilation) are used too; MoltenVK itself is the unmodified 1.4.2 release.
 Disabling MoltenVK residency sets also avoids bug 4, but makes the frame rate degrade over time
 (50 → 23 FPS in 100 s), so virtual heaps is the better workaround.
+
+Bug 2 was found independently of the upstream fix; Wine 11.4 and later already contain it (D2R's faults
+are execute faults, which upstream now never treats as `%gs` faults). Bugs 1, 3 and 4 are not fixed in
+Wine 11.18: they are in DXMT's `dxgi.dll` and in MoltenVK.
 
 The full investigation is in [docs/investigation.md](docs/investigation.md); upstream report drafts
 are in [docs/upstream](docs/upstream).
