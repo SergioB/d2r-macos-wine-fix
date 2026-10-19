@@ -57,6 +57,14 @@ Wine engine, MoltenVK and libraries. With `--move-prefix` the wrapper's Wine pre
 ~30 GB game) is **moved** (instant, same disk) out of the Porting Kit wrapper, so Porting Kit updates
 can't touch it. To go back, move the prefix folder back to `<wrapper>/Contents/SharedSupport/prefix`.
 
+To rebuild the app later without the Porting Kit wrapper (e.g. after updating `wined3d.dll`), reuse the
+support libraries of the installed app:
+
+```sh
+scripts/build-app.sh --libs "$HOME/Applications/Diablo II Resurrected.app/Contents/Resources/Frameworks" \
+    --wined3d dist/wined3d.dll --prefix "$HOME/Games/Diablo II Resurrected/prefix"
+```
+
 ## Usage
 
 - Double-click **Diablo II Resurrected.app**: starts Battle.net, then press Play.

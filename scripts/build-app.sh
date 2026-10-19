@@ -8,13 +8,15 @@
 # usage: scripts/build-app.sh --wrapper <Porting Kit D2R .app> --wined3d <wined3d.dll>
 #                             [--app <dest .app>] [--prefix <prefix dir>] [--move-prefix]
 #                             [--engine-archive <WS12Wine11.0_1_DXMT-v0.80.tar.7z>]
+# Rebuilding an existing app without the Porting Kit wrapper:
+#        scripts/build-app.sh --libs "<app>/Contents/Resources/Frameworks" --wined3d <dll> --prefix <prefix>
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$HOME/Applications/Diablo II Resurrected.app"
 PREFIX="$HOME/Games/Diablo II Resurrected/prefix"
 ENGINE_ARCHIVE="$HOME/Library/Application Support/Wineskin/Engines/WS12Wine11.0_1_DXMT-v0.80.tar.7z"
-WRAPPER=""; WINED3D=""; MOVE_PREFIX=0
+WRAPPER=""; LIBS=""; WINED3D=""; MOVE_PREFIX=0
 CACHE="${D2R_CACHE:-$HOME/Library/Caches/d2r-macos-wine-fix}"
 
 MVK_URL="https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.2/MoltenVK-macos.tar"
@@ -30,18 +32,21 @@ sha() { shasum -a 256 "$1" | awk '{print $1}'; }
 while [ $# -gt 0 ]; do
     case "$1" in
         --wrapper) WRAPPER="$2"; shift 2 ;;
+        --libs) LIBS="$2"; shift 2 ;;
         --wined3d) WINED3D="$2"; shift 2 ;;
         --app) APP="$2"; shift 2 ;;
         --prefix) PREFIX="$2"; shift 2 ;;
         --move-prefix) MOVE_PREFIX=1; shift ;;
         --engine-archive) ENGINE_ARCHIVE="$2"; shift 2 ;;
-        -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
         *) die "unknown argument $1" ;;
     esac
 done
 
 [ "$(uname -m)" = arm64 ] || die "this targets Apple Silicon Macs"
-[ -n "$WRAPPER" ] && [ -d "$WRAPPER/Contents/Frameworks" ] || die "--wrapper must point to a Porting Kit wrapper .app"
+[ -n "$LIBS" ] || LIBS="$WRAPPER/Contents/Frameworks"
+[ -n "$LIBS" ] && [ -f "$LIBS/libfreetype.6.dylib" ] || die "need --wrapper <Porting Kit wrapper .app> or --libs <x86_64 support libs dir>"
+[ "$MOVE_PREFIX" = 0 ] || [ -n "$WRAPPER" ] || die "--move-prefix needs --wrapper"
 [ -n "$WINED3D" ] && [ -f "$WINED3D" ] || die "--wined3d must point to the patched wined3d.dll"
 [ -f "$ENGINE_ARCHIVE" ] || die "engine archive not found: $ENGINE_ARCHIVE (install the D2R port in Porting Kit once)"
 SEVENZ="/Applications/Porting Kit.app/Contents/Resources/app.asar.unpacked/node_modules/7zip-bin/mac/arm64/7za"
@@ -91,12 +96,14 @@ lipo "$WORK/MoltenVK/MoltenVK/dynamic/dylib/macOS/libMoltenVK.dylib" -thin x86_6
 codesign --force -s - "$RES/moltenvk/libMoltenVK.dylib" 2>/dev/null
 
 echo "copying support libraries from the wrapper"
-rsync -a --exclude moltenvkcx --exclude libMoltenVK.dylib "$WRAPPER/Contents/Frameworks/" "$RES/Frameworks/"
+rsync -a --exclude moltenvkcx --exclude libMoltenVK.dylib "$LIBS/" "$RES/Frameworks/"
 
 cp "$REPO/launcher/d2r-launcher.sh" "$STAGE/Contents/MacOS/d2r-launcher"
 chmod +x "$STAGE/Contents/MacOS/d2r-launcher"
 cp "$REPO/launcher/Info.plist" "$STAGE/Contents/Info.plist"
-[ -f "$WRAPPER/Contents/Resources/Wineskin.icns" ] && cp "$WRAPPER/Contents/Resources/Wineskin.icns" "$RES/d2r.icns"
+for ICON in "$WRAPPER/Contents/Resources/Wineskin.icns" "$APP/Contents/Resources/d2r.icns" "$CACHE/d2r.icns"; do
+    [ -f "$ICON" ] && { cp "$ICON" "$RES/d2r.icns"; cp "$ICON" "$CACHE/d2r.icns" 2>/dev/null || true; break; }
+done
 printf '%s\n' "$PREFIX" > "$RES/prefix-path"
 
 if [ "$MOVE_PREFIX" = 1 ]; then
