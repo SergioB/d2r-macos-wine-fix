@@ -1,0 +1,58 @@
+--- a/libs/vkd3d/libs/vkd3d/state.c
++++ b/libs/vkd3d/libs/vkd3d/state.c
+@@ -3491,6 +3491,17 @@
+         offset_info.descriptor_table_count = root_signature->descriptor_table_count;
+         offset_info.binding_offsets = root_signature->descriptor_offsets;
+         offset_info.uav_counter_offsets = root_signature->uav_counter_offsets;
++    }
++
++    {
++        /* MoltenVK's tessellation emulation draws nothing for Diablo II: Resurrected's pass-through
++         * hull/domain shaders (tessellation factor 1), so draw the patches as plain triangles.
++         * Set VKD3D_D2R_NOTESS=0 to disable. */
++        const char *notess = getenv("VKD3D_D2R_NOTESS");
++        graphics->skip_tessellation = !(notess && *notess == '0')
++                && desc->hs.pShaderBytecode && desc->ds.pShaderBytecode;
++        if (graphics->skip_tessellation)
++            FIXME("Bypassing tessellation for pipeline state %p.\n", state);
+     }
+ 
+     for (i = 0; i < ARRAY_SIZE(shader_stages); ++i)
+@@ -3498,6 +3509,9 @@
+         const D3D12_SHADER_BYTECODE *b = (const void *)((uintptr_t)desc + shader_stages[i].offset);
+ 
+         if (!b->pShaderBytecode)
++            continue;
++        if (graphics->skip_tessellation && (shader_stages[i].stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
++                || shader_stages[i].stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT))
+             continue;
+ 
+         if (FAILED(hr = d3d12_pipeline_state_find_and_init_uav_counters(state, device, root_signature,
+@@ -4050,6 +4064,8 @@
+     ia_desc.pNext = NULL;
+     ia_desc.flags = 0;
+     ia_desc.topology = vk_topology_from_d3d12_topology(topology);
++    if (graphics->skip_tessellation && topology == D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST)
++        ia_desc.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+     ia_desc.primitiveRestartEnable = graphics->index_buffer_strip_cut_value
+             && vk_topology_can_restart(ia_desc.topology);
+ 
+@@ -4084,7 +4100,7 @@
+     pipeline_desc.pStages = graphics->stages;
+     pipeline_desc.pVertexInputState = &input_desc;
+     pipeline_desc.pInputAssemblyState = &ia_desc;
+-    pipeline_desc.pTessellationState = &tessellation_info;
++    pipeline_desc.pTessellationState = graphics->skip_tessellation ? NULL : &tessellation_info;
+     pipeline_desc.pViewportState = &vp_desc;
+     pipeline_desc.pRasterizationState = &graphics->rs_desc;
+     pipeline_desc.pMultisampleState = &graphics->ms_desc;
+--- a/libs/vkd3d/libs/vkd3d/vkd3d_private.h
++++ b/libs/vkd3d/libs/vkd3d/vkd3d_private.h
+@@ -1030,6 +1030,7 @@
+ {
+     VkPipelineShaderStageCreateInfo stages[VKD3D_MAX_SHADER_STAGES];
+     size_t stage_count;
++    bool skip_tessellation; /* D2R: draw 3-point patches as triangles without HS/DS */
+ 
+     VkVertexInputAttributeDescription attributes[D3D12_VS_INPUT_REGISTER_COUNT];
+     VkVertexInputRate input_rates[D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];

@@ -1,0 +1,27 @@
+--- a/dlls/ntdll/unix/signal_x86_64.c
++++ b/dlls/ntdll/unix/signal_x86_64.c
+@@ -2304,6 +2304,7 @@
+     const void *rip = (void *)RIP_sig(ucontext);
+     BYTE instr[16];
+     unsigned int i, len, prefix_count = 0;
++    BOOL gs_prefix = FALSE;
+     TEB *teb = NtCurrentTeb();
+     ULONG_PTR cur_gsbase = 0;
+ 
+@@ -2363,12 +2364,16 @@
+                 if (++prefix_count >= 15) return FALSE;
+                 continue;
+             case 0x65:  /* %gs: */
++                gs_prefix = TRUE;
+                 break;
+             default:
+                 return FALSE;
+             }
+             break;
+         }
++        /* Only prefixes could be read (e.g. an instruction straddling into an inaccessible page),
++         * so this is not a %gs fault: let the exception be dispatched to the application. */
++        if (!gs_prefix) return FALSE;
+     }
+ 
+     TRACE( "gsbase %016lx teb %p at instr %p, fixing up\n", cur_gsbase, teb, instr );
